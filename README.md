@@ -54,15 +54,19 @@ Or invoke directly: `/sagemaker-llm-training-skill`
 
 ## Trainium Support
 
-**Only these architectures are supported for training on AWS Trainium:**
+**Only these exact `model_type` values are supported for training on AWS Trainium:**
 
-| Architecture | Model Examples |
-|--------------|----------------|
-| **llama** | Llama-3.x, Llama-2, Code Llama |
-| **qwen3** | Qwen3-8B, Qwen3-72B (NOT Qwen2.5) |
-| **granite** | IBM Granite models |
+| Supported | NOT Supported (variants) |
+|-----------|--------------------------|
+| `llama` | `llama_vl`, `mllama` |
+| `qwen3` | `qwen3_vl`, `qwen2`, `qwen2_5` |
+| `granite` | `granite_vl` |
 
-All other model architectures must use GPU (NVIDIA) instances.
+**Important:** Model variants have different architectures! Always check the `model_type` in `config.json`:
+- `qwen3` → Supported
+- `qwen3_vl` → NOT supported (Vision-Language model)
+
+All other architectures must use GPU (NVIDIA) instances.
 
 **Source**: [Neuron Supported Architectures](https://huggingface.co/docs/optimum-neuron/en/supported_architectures)
 

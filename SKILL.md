@@ -123,13 +123,19 @@ Use `AskUserQuestion`:
 
 ### Step 7: Accelerator
 
-**Trainium support is limited.** Only these architectures are supported for training on Neuron:
+**Trainium support is limited.** Only these **exact** architectures are supported for training on Neuron:
 
-| Supported for Training | Model Examples |
-|------------------------|----------------|
-| **llama** | Llama-3.x, Llama-2, Code Llama |
-| **qwen3** | Qwen3-8B, Qwen3-72B (NOT Qwen2.5) |
-| **granite** | IBM Granite models |
+| Supported | NOT Supported (variants) |
+|-----------|--------------------------|
+| `llama` | `llama_vl`, `mllama`, etc. |
+| `qwen3` | `qwen3_vl`, `qwen2`, `qwen2_5`, etc. |
+| `granite` | `granite_vl`, etc. |
+
+**IMPORTANT:** Variants are different architectures! Check the **exact** `model_type` value:
+- `qwen3` → Supported
+- `qwen3_vl` → NOT supported (Vision-Language variant)
+- `llama` → Supported
+- `mllama` → NOT supported (Multimodal Llama)
 
 **Source**: https://huggingface.co/docs/optimum-neuron/en/supported_architectures
 
