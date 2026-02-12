@@ -134,9 +134,17 @@ Use `AskUserQuestion`:
 **Source**: https://huggingface.co/docs/optimum-neuron/en/supported_architectures
 
 **Decision logic:**
-1. Check the model's `model_type` in its config.json on HuggingFace
+1. **Fetch the model's architecture** using WebFetch:
+   ```
+   WebFetch: https://huggingface.co/<model-id>/raw/main/config.json
+   Prompt: "What is the model_type value in this config?"
+   ```
+   Example: `https://huggingface.co/aisingapore/Apertus-SEA-LION-v4-8B-IT/raw/main/config.json`
+
 2. If `model_type` is `llama`, `qwen3`, or `granite` → Offer both GPU and Trainium
 3. Otherwise → Use GPU only (do NOT offer Trainium)
+
+**Note:** Model names don't always indicate architecture. Always check config.json.
 
 **If architecture IS supported** - Use `AskUserQuestion`:
 - **GPU (NVIDIA)** - Broad support, QLoRA compatible
