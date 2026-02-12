@@ -1,0 +1,134 @@
+# HyperPod Training Recipe Configuration
+# Based on aws/sagemaker-hyperpod-recipes format
+#
+# Usage:
+#   1. Copy this file and customize for your model/data
+#   2. Submit via HyperPod Recipes CLI or Slurm
+
+# ========================================
+# Model Configuration
+# ========================================
+model:
+  # Model source: HuggingFace ID or S3 path
+  model_id: "meta-llama/Llama-3.1-8B-Instruct"  # CHANGE THIS
+
+  # Model loading options
+  trust_remote_code: false
+  torch_dtype: "bfloat16"
+
+  # Optional: Load from S3 instead of HuggingFace
+  # s3_model_path: "s3://your-bucket/models/llama-3.1-8b"
+
+# ========================================
+# Training Configuration
+# ========================================
+training:
+  # Training objective
+  objective: "sft"  # Options: sft, cpt, dpo
+
+  # Training technique
+  technique: "lora"  # Options: full, lora, qlora
+
+  # LoRA configuration (if technique is lora or qlora)
+  lora:
+    r: 16
+    alpha: 32
+    dropout: 0.05
+    target_modules:
+      - q_proj
+      - k_proj
+      - v_proj
+      - o_proj
+      - gate_proj
+      - up_proj
+      - down_proj
+
+  # Hyperparameters
+  learning_rate: 1.0e-4
+  num_epochs: 1
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  lr_scheduler: "cosine"
+
+  # Batch configuration
+  per_device_batch_size: 1
+  gradient_accumulation_steps: 8
+
+  # Sequence length
+  max_seq_length: 4096
+
+  # Memory optimization
+  gradient_checkpointing: true
+  packing: false
+
+# ========================================
+# Data Configuration
+# ========================================
+data:
+  # Training data location
+  train_path: "s3://your-bucket/datasets/train/"  # CHANGE THIS
+
+  # Optional validation data
+  # val_path: "s3://your-bucket/datasets/val/"
+
+  # Data format
+  format: "jsonl"  # Options: jsonl, parquet, hf_dataset
+
+  # For conversational datasets
+  # Expected format: {"messages": [{"role": "user", "content": "..."}, ...]}
+
+# ========================================
+# Distributed Training Configuration
+# ========================================
+distributed:
+  # Strategy: ddp, fsdp, deepspeed
+  strategy: "fsdp"
+
+  # FSDP configuration
+  fsdp:
+    sharding_strategy: "FULL_SHARD"
+    backward_prefetch: "BACKWARD_PRE"
+    auto_wrap_policy: "TRANSFORMER_BASED_WRAP"
+    cpu_offload: false
+
+  # DeepSpeed configuration (alternative)
+  # deepspeed:
+  #   stage: 3
+  #   offload_optimizer: false
+  #   offload_params: false
+
+# ========================================
+# Infrastructure Configuration
+# ========================================
+infrastructure:
+  # Instance type (must match HyperPod cluster node type)
+  instance_type: "ml.g5.12xlarge"  # 4x A10G GPUs
+
+  # Number of nodes
+  num_nodes: 1
+
+  # Processes per node (typically = number of GPUs)
+  processes_per_node: 4
+
+# ========================================
+# Output Configuration
+# ========================================
+output:
+  # Model output location
+  s3_output_path: "s3://your-bucket/outputs/"  # CHANGE THIS
+
+  # Checkpointing
+  save_strategy: "steps"
+  save_steps: 500
+  save_total_limit: 3
+
+  # Logging
+  logging_steps: 10
+
+# ========================================
+# Optional: Weights & Biases Integration
+# ========================================
+# wandb:
+#   project: "llm-training"
+#   entity: "your-team"
+#   run_name: "llama-3.1-8b-sft"
