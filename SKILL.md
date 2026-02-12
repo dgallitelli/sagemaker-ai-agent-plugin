@@ -178,12 +178,31 @@ Use `AskUserQuestion`:
         MODEL_ID='<model-id>' python test_neuron_compile.py"
       ```
 
-   e. **Interpret results**:
-      - `PASSED` → Proceed with Trainium
-      - `int64 matmul not supported` → Use GPU instead (incompatible)
-      - Other errors → Check [references/neuron-compile-test.md](references/neuron-compile-test.md)
+   e. **Expected successful output**:
+      ```
+      Compiler status PASS
+      ...
+        Forward pass completed in XXX.Xs
+        Output logits shape: torch.Size([1, N, vocab_size])
 
-   f. **Cleanup**:
+      ============================================================
+      RESULT: Neuron compilation test PASSED
+      ============================================================
+      ```
+
+   f. **Ask user to confirm result** using `AskUserQuestion`:
+      - **Compilation PASSED** - I see "Compiler status PASS" in the output
+      - **Compilation FAILED** - I see errors or "Compiler status FAIL"
+      - **Need help interpreting** - Not sure what the output means
+
+      → If **PASSED**: Proceed with Trainium, go to cleanup
+      → If **FAILED**: Check error type:
+        - `int64 matmul not supported` → Use GPU instead (incompatible)
+        - `model_type not recognized` → Check transformers version
+        - Other errors → See [references/neuron-compile-test.md](references/neuron-compile-test.md)
+      → If **Need help**: Ask user to paste output, help interpret
+
+   g. **Cleanup**:
       ```bash
       aws cloudformation delete-stack --stack-name neuron-compile-test --region <region>
       ```

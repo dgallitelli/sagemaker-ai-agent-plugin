@@ -59,6 +59,19 @@ For models not in the [official Neuron supported architectures](https://huggingf
 
 **Cost**: ~$0.30 per test (trn1.2xlarge for ~15 minutes)
 
+**Expected successful output**:
+```
+Compiler status PASS
+...
+  Forward pass completed in XXX.Xs
+  Output logits shape: torch.Size([1, N, vocab_size])
+
+============================================================
+RESULT: Neuron compilation test PASSED
+============================================================
+```
+
+**Commands**:
 ```bash
 # Deploy test instance
 aws cloudformation create-stack --stack-name neuron-compile-test \

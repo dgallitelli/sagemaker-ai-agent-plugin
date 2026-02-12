@@ -81,11 +81,25 @@ ssh -i <key>.pem ubuntu@$IP "source /opt/aws_neuronx_venv_pytorch_2_9_nxd_traini
 
 ### Step 4: Interpret Results
 
-**SUCCESS:**
+**SUCCESS** - Look for these key indicators:
 ```
+.....................Completed run_backend_driver.
+
+Compiler status PASS
+2026-XX-XX XX:XX:XX.XXXXXX:  XXXX  [INFO]: Compilation Successfully Completed for model.MODULE_XXXX.hlo_module.pb
+  Forward pass completed in XXX.Xs
+  Output logits shape: torch.Size([1, N, vocab_size])
+
+============================================================
 RESULT: Neuron compilation test PASSED
+============================================================
 ```
 → Model is compatible with Trainium. Proceed with training.
+
+**Key success indicators:**
+- `Compiler status PASS` - The Neuron compiler succeeded
+- `Compilation Successfully Completed` - HLO module compiled
+- `RESULT: Neuron compilation test PASSED` - Forward pass worked
 
 **FAILURE - Unsupported ops:**
 ```
