@@ -112,25 +112,48 @@ ssh -i <key>.pem ubuntu@$IP "source /opt/aws_neuronx_venv_pytorch_2_9_nxd_traini
 
 ### Step 4: Interpret Results
 
-**SUCCESS** - Look for these key indicators:
+The test script prints a **copyable summary** at the end. Look for this block:
+
+**SUCCESS** - Clean pass:
 ```
-.....................Completed run_backend_driver.
-
-Compiler status PASS
-2026-XX-XX XX:XX:XX.XXXXXX:  XXXX  [INFO]: Compilation Successfully Completed for model.MODULE_XXXX.hlo_module.pb
-  Forward pass completed in XXX.Xs
-  Output logits shape: torch.Size([1, N, vocab_size])
-
-============================================================
-RESULT: Neuron compilation test PASSED
-============================================================
+############################################################
+# COPY THIS SUMMARY:
+############################################################
+Model: Qwen/Qwen3-8B
+Status: PASSED
+Architecture: qwen3
+Parameters: 8.19B
+############################################################
 ```
 → Model is compatible with Trainium. Proceed with training.
 
-**Key success indicators:**
-- `Compiler status PASS` - The Neuron compiler succeeded
-- `Compilation Successfully Completed` - HLO module compiled
-- `RESULT: Neuron compilation test PASSED` - Forward pass worked
+**SUCCESS with memory warning** - Needs larger instance:
+```
+############################################################
+# COPY THIS SUMMARY:
+############################################################
+Model: Qwen/Qwen3-8B
+Status: PASSED
+Architecture: qwen3
+Parameters: 8.19B
+Memory Warning: YES (needs larger instance for training)
+############################################################
+```
+→ Model IS compatible, but use trn1.32xlarge instead of trn1.2xlarge.
+
+**FAILED** - Incompatible:
+```
+############################################################
+# COPY THIS SUMMARY:
+############################################################
+Model: custom/my-model
+Status: FAILED
+Error: int64 matmul not supported (incompatible)
+############################################################
+```
+→ Model is NOT compatible with Neuron. Use GPU instead.
+
+**Full log location:** `~/neuron-test/last_test.log`
 
 **FAILURE - Unsupported ops:**
 ```

@@ -178,17 +178,19 @@ Use `AskUserQuestion`:
         MODEL_ID='<model-id>' python test_neuron_compile.py"
       ```
 
-   e. **Expected successful output**:
+   e. **Expected output** - Look for the copyable summary block at the end:
       ```
-      Compiler status PASS
-      ...
-        Forward pass completed in XXX.Xs
-        Output logits shape: torch.Size([1, N, vocab_size])
-
-      ============================================================
-      RESULT: Neuron compilation test PASSED
-      ============================================================
+      ############################################################
+      # COPY THIS SUMMARY:
+      ############################################################
+      Model: <model-id>
+      Status: PASSED
+      Architecture: <model_type>
+      Parameters: <X.XX>B
+      Memory Warning: YES (if present, needs larger instance)
+      ############################################################
       ```
+      Full log saved to: `~/neuron-test/last_test.log`
 
    f. **Ask user to confirm result** using `AskUserQuestion`:
       - **Compilation PASSED** - I see "Compiler status PASS" in the output

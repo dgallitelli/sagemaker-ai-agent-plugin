@@ -81,18 +81,42 @@ Resources:
           """
           Test Neuron compilation for a HuggingFace model on Trainium.
           Usage: MODEL_ID="model/name" python test_neuron_compile.py
+          Output saved to ~/neuron-test/last_test.log
           """
           import os
           import sys
           import time
+          import io
+          import re
+
+          class TeeOutput:
+              """Capture output to both console and string buffer."""
+              def __init__(self):
+                  self.buffer = io.StringIO()
+                  self.stdout = sys.stdout
+                  self.stderr = sys.stderr
+              def write(self, data):
+                  self.buffer.write(data)
+                  self.stdout.write(data)
+              def flush(self):
+                  self.stdout.flush()
+              def getvalue(self):
+                  return self.buffer.getvalue()
 
           def test_compilation():
               model_id = os.environ.get("MODEL_ID", "meta-llama/Llama-3.2-1B")
+              tee = TeeOutput()
+              sys.stdout = tee
+              sys.stderr = tee
+
+              result = {"model": model_id, "status": "UNKNOWN", "memory_warning": False,
+                        "error": None, "model_type": None, "params": None}
+
               print("=" * 60)
               print("Neuron Compilation Test")
               print("=" * 60)
               print(f"Model: {model_id}")
-              print(f"Python: {sys.version}")
+              print(f"Python: {sys.version.split()[0]}")
               print("=" * 60)
 
               print("\n[1/6] Checking environment...")
@@ -101,21 +125,22 @@ Resources:
                   print(f"  PyTorch: {torch.__version__}")
               except ImportError as e:
                   print(f"  ERROR: PyTorch not available: {e}")
-                  return False
+                  result["status"] = "FAILED"
+                  result["error"] = "PyTorch not available"
+                  return finish(result, tee)
 
-              neuron_available = False
               try:
                   import torch_neuronx
                   print(f"  torch-neuronx: available")
-                  neuron_available = True
               except ImportError:
                   print(f"  torch-neuronx: NOT available")
-                  return False
+                  result["status"] = "FAILED"
+                  result["error"] = "torch-neuronx not available"
+                  return finish(result, tee)
 
               try:
                   import torch_xla.core.xla_model as xm
                   print(f"  torch-xla: available")
-                  print(f"  XLA devices: {xm.get_xla_supported_devices()}")
               except Exception as e:
                   print(f"  torch-xla: error - {e}")
 
@@ -125,7 +150,9 @@ Resources:
                   print(f"  transformers: {transformers.__version__}")
               except ImportError as e:
                   print(f"  ERROR: transformers not available: {e}")
-                  return False
+                  result["status"] = "FAILED"
+                  result["error"] = "transformers not available"
+                  return finish(result, tee)
 
               print("\n[3/6] Loading tokenizer...")
               start = time.time()
@@ -135,8 +162,9 @@ Resources:
                   print(f"  Loaded in {time.time()-start:.1f}s, vocab: {tokenizer.vocab_size}")
               except Exception as e:
                   print(f"  ERROR: {e}")
-                  import traceback; traceback.print_exc()
-                  return False
+                  result["status"] = "FAILED"
+                  result["error"] = f"Tokenizer error: {str(e)[:100]}"
+                  return finish(result, tee)
 
               print("\n[4/6] Loading model...")
               start = time.time()
@@ -149,12 +177,15 @@ Resources:
                       attn_implementation="eager",
                   )
                   num_params = sum(p.numel() for p in model.parameters())
+                  result["model_type"] = model.config.model_type
+                  result["params"] = f"{num_params/1e9:.2f}B"
                   print(f"  Loaded in {time.time()-start:.1f}s")
-                  print(f"  Type: {model.config.model_type}, Params: {num_params/1e9:.2f}B")
+                  print(f"  Type: {result['model_type']}, Params: {result['params']}")
               except Exception as e:
                   print(f"  ERROR: {e}")
-                  import traceback; traceback.print_exc()
-                  return False
+                  result["status"] = "FAILED"
+                  result["error"] = f"Model load error: {str(e)[:100]}"
+                  return finish(result, tee)
 
               print("\n[5/6] Moving to Neuron (compilation)...")
               start = time.time()
@@ -164,9 +195,14 @@ Resources:
                   model = model.to(device)
                   print(f"  Moved to {device} in {time.time()-start:.1f}s")
               except Exception as e:
+                  error_str = str(e)
                   print(f"  ERROR: {e}")
-                  import traceback; traceback.print_exc()
-                  return False
+                  result["status"] = "FAILED"
+                  if "int64" in error_str.lower() or "matmul" in error_str.lower():
+                      result["error"] = "int64 matmul not supported (incompatible)"
+                  else:
+                      result["error"] = f"Neuron error: {error_str[:100]}"
+                  return finish(result, tee)
 
               print("\n[6/6] Forward pass...")
               start = time.time()
@@ -179,15 +215,64 @@ Resources:
                   xm.mark_step()
                   print(f"  Completed in {time.time()-start:.1f}s")
                   print(f"  Output shape: {outputs.logits.shape}")
+                  result["status"] = "PASSED"
               except Exception as e:
+                  error_str = str(e)
                   print(f"  ERROR: {e}")
-                  import traceback; traceback.print_exc()
-                  return False
+                  result["status"] = "FAILED"
+                  if "int64" in error_str.lower():
+                      result["error"] = "int64 matmul not supported (incompatible)"
+                  else:
+                      result["error"] = f"Forward pass error: {error_str[:100]}"
+                  return finish(result, tee)
 
+              # Check for memory warnings in output
+              output = tee.getvalue()
+              if "Failed to allocate" in output or "NRT_RESOURCE" in output:
+                  result["memory_warning"] = True
+
+              return finish(result, tee)
+
+          def finish(result, tee):
+              """Print summary and save log."""
+              sys.stdout = tee.stdout
+              sys.stderr = tee.stderr
+              output = tee.getvalue()
+
+              # Re-check memory warnings in captured output
+              if "Failed to allocate" in output or "NRT_RESOURCE" in output:
+                  result["memory_warning"] = True
+
+              # Save full log
+              log_path = os.path.expanduser("~/neuron-test/last_test.log")
+              with open(log_path, "w") as f:
+                  f.write(output)
+
+              # Print copyable summary
               print("\n" + "=" * 60)
-              print("RESULT: Neuron compilation test PASSED")
+              if result["status"] == "PASSED":
+                  print("RESULT: Neuron compilation test PASSED")
+              else:
+                  print("RESULT: Neuron compilation test FAILED")
               print("=" * 60)
-              return True
+
+              print("\n" + "#" * 60)
+              print("# COPY THIS SUMMARY:")
+              print("#" * 60)
+              print(f"Model: {result['model']}")
+              print(f"Status: {result['status']}")
+              if result["model_type"]:
+                  print(f"Architecture: {result['model_type']}")
+              if result["params"]:
+                  print(f"Parameters: {result['params']}")
+              if result["memory_warning"]:
+                  print(f"Memory Warning: YES (needs larger instance for training)")
+              if result["error"]:
+                  print(f"Error: {result['error']}")
+              print("#" * 60)
+              print(f"Full log: {log_path}")
+
+              return result["status"] == "PASSED"
 
           if __name__ == "__main__":
               success = test_compilation()
