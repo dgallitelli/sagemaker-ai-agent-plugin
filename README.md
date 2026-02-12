@@ -8,8 +8,7 @@ A Claude Code skill for training and fine-tuning Large Language Models on Amazon
 - **Multiple Training Objectives**: Instruction SFT, Continued Pretraining (CPT), Preference Optimization (DPO)
 - **Flexible Techniques**: QLoRA, LoRA, Spectrum, Full Fine-tuning
 - **Infrastructure Options**: SageMaker Training Jobs or HyperPod clusters
-- **Accelerator Support**: NVIDIA GPUs and AWS Trainium
-- **Neuron Compatibility Testing**: Verify custom model architectures before training
+- **Accelerator Support**: NVIDIA GPUs and AWS Trainium (for supported models)
 - **Dynamic Container Selection**: Fetches latest DLC images from AWS
 - **Quota Checking**: Validates instance availability in your region
 
@@ -53,42 +52,19 @@ Or invoke directly: `/sagemaker-llm-training-skill`
 | 13 | IAM execution role? |
 | 14 | Output format? (Notebook vs Script) |
 
-## Neuron Compilation Testing
+## Trainium Support
 
-For models not in the [official Neuron supported architectures](https://huggingface.co/docs/optimum-neuron/en/supported_architectures), the skill can deploy a test EC2 instance to verify compatibility before committing to a full training job.
+**Only these architectures are supported for training on AWS Trainium:**
 
-**Cost**: ~$0.30 per test (trn1.2xlarge for ~15 minutes)
+| Architecture | Model Examples |
+|--------------|----------------|
+| **llama** | Llama-3.x, Llama-2, Code Llama |
+| **qwen3** | Qwen3-8B, Qwen3-72B (NOT Qwen2.5) |
+| **granite** | IBM Granite models |
 
-**Expected successful output**:
-```
-Compiler status PASS
-...
-  Forward pass completed in XXX.Xs
-  Output logits shape: torch.Size([1, N, vocab_size])
+All other model architectures must use GPU (NVIDIA) instances.
 
-============================================================
-RESULT: Neuron compilation test PASSED
-============================================================
-```
-
-**Commands**:
-```bash
-# Deploy test instance
-aws cloudformation create-stack --stack-name neuron-compile-test \
-  --template-body file://templates/trainium/cfn-neuron-compile-test.yaml \
-  --parameters ParameterKey=KeyPairName,ParameterValue=<key-name> \
-  --region us-east-1
-
-# Run test (one-liner)
-IP=$(aws cloudformation describe-stacks --stack-name neuron-compile-test \
-  --query 'Stacks[0].Outputs[?OutputKey==`PublicIP`].OutputValue' --output text --region us-east-1)
-ssh -i <key>.pem ubuntu@$IP "source /opt/aws_neuronx_venv_pytorch_2_5_nxd_training/bin/activate && \
-  pip install -q 'transformers>=5.0' && cd ~/neuron-test && \
-  MODEL_ID='<model-id>' python test_neuron_compile.py"
-
-# Cleanup
-aws cloudformation delete-stack --stack-name neuron-compile-test --region us-east-1
-```
+**Source**: [Neuron Supported Architectures](https://huggingface.co/docs/optimum-neuron/en/supported_architectures)
 
 ## Project Structure
 
@@ -101,7 +77,6 @@ sagemaker-llm-training-skill/
 │   ├── container-selection.md  # DLC image selection
 │   ├── data-contract.md        # Dataset format requirements
 │   ├── instance-sizing.md      # Instance recommendations
-│   ├── neuron-compile-test.md  # Trainium compatibility testing
 │   ├── neuron-validation.md    # Neuron architecture support
 │   ├── output-artifacts.md     # Generated code format
 │   └── recipe-sources.md       # AWS sample recipes
@@ -119,8 +94,7 @@ sagemaker-llm-training-skill/
     ├── cpt_hf.py               # Continued pretraining
     ├── trainium/
     │   ├── lora_neuron.py      # LoRA for Neuron SDK
-    │   ├── sft_neuron.py       # Full SFT for Neuron
-    │   └── cfn-neuron-compile-test.yaml  # EC2 test instance
+    │   └── sft_neuron.py       # Full SFT for Neuron
     └── hyperpod/
         ├── recipe_config.yaml  # HyperPod configuration
         └── submit_slurm.sh     # Slurm submission script
@@ -130,14 +104,14 @@ sagemaker-llm-training-skill/
 
 | Model Family | QLoRA | LoRA | Spectrum | Full | Trainium |
 |--------------|-------|------|----------|------|----------|
-| Llama | Yes | Yes | Yes | Yes | Yes |
-| Qwen | Yes | Yes | Yes | Yes | Yes |
-| Gemma | Yes | Yes | No | Yes | Yes |
-| Phi | Yes | Yes | Yes | Yes | Check |
-| DeepSeek | Yes | Yes | Yes | Yes | Check |
-| Mistral | Yes | Yes | Yes | Yes | Yes |
-
-*"Check" = Use Neuron compilation test to verify compatibility*
+| Llama | Yes | Yes | Yes | Yes | **Yes** |
+| Qwen3 | Yes | Yes | Yes | Yes | **Yes** |
+| Granite | Yes | Yes | Yes | Yes | **Yes** |
+| Qwen2.5 | Yes | Yes | Yes | Yes | No |
+| Gemma | Yes | Yes | No | Yes | No |
+| Phi | Yes | Yes | Yes | Yes | No |
+| DeepSeek | Yes | Yes | Yes | Yes | No |
+| Mistral | Yes | Yes | Yes | Yes | No |
 
 ## Requirements
 

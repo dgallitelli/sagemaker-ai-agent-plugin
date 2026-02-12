@@ -123,96 +123,28 @@ Use `AskUserQuestion`:
 
 ### Step 7: Accelerator
 
-**IMPORTANT**: Check Neuron compatibility BEFORE offering Trainium.
+**Trainium support is limited.** Only these architectures are supported for training on Neuron:
 
-1. **Verify model support** using WebFetch:
-   ```
-   WebFetch: https://huggingface.co/docs/optimum-neuron/en/supported_architectures
-   Prompt: "Is <model_type> supported for training on Trainium/Neuron?"
-   ```
+| Supported for Training | Model Examples |
+|------------------------|----------------|
+| **llama** | Llama-3.x, Llama-2, Code Llama |
+| **qwen3** | Qwen3-8B, Qwen3-72B (NOT Qwen2.5) |
+| **granite** | IBM Granite models |
 
-2. **Decision tree**:
-   - If architecture **explicitly listed** → Offer both GPU and Trainium
-   - If architecture **not listed** but user wants Trainium → Offer compilation test
-   - If architecture **not listed** and user doesn't need Trainium → Use GPU
+**Source**: https://huggingface.co/docs/optimum-neuron/en/supported_architectures
 
-3. **Present appropriate options** using `AskUserQuestion`:
+**Decision logic:**
+1. Check the model's `model_type` in its config.json on HuggingFace
+2. If `model_type` is `llama`, `qwen3`, or `granite` → Offer both GPU and Trainium
+3. Otherwise → Use GPU only (do NOT offer Trainium)
 
-   **If architecture is supported:**
-   - **GPU (NVIDIA)** - Broad model support, QLoRA compatible
-   - **Trainium** - Cost-effective for supported models (no 4-bit)
+**If architecture IS supported** - Use `AskUserQuestion`:
+- **GPU (NVIDIA)** - Broad support, QLoRA compatible
+- **Trainium** - Cost-effective for Llama/Qwen3/Granite (no 4-bit quantization)
 
-   **If architecture is NOT in supported list:**
-   - **GPU (NVIDIA)** - Guaranteed compatibility (Recommended)
-   - **Test Trainium compatibility** - Launch EC2 instance to verify (~$0.30)
-
-4. **If user chooses "Test Trainium compatibility"**:
-
-   Follow [references/neuron-compile-test.md](references/neuron-compile-test.md):
-
-   a. **Ask about SSH key** using `AskUserQuestion`:
-      - **Use existing key pair** - I have an EC2 key pair
-      - **Create new key pair** - Create one for me
-
-   b. **If creating new key**, run:
-      ```bash
-      aws ec2 create-key-pair --key-name neuron-compile-test-key \
-        --query 'KeyMaterial' --region <region> --output text > neuron-compile-test-key.pem
-      chmod 400 neuron-compile-test-key.pem
-      ```
-
-   c. **Deploy test instance** (requires user approval):
-      ```bash
-      aws cloudformation create-stack --stack-name neuron-compile-test \
-        --template-body file://templates/trainium/cfn-neuron-compile-test.yaml \
-        --parameters ParameterKey=KeyPairName,ParameterValue=<key-name> \
-        --region <region>
-      ```
-
-   d. **Run test (one-liner)**:
-      ```bash
-      IP=$(aws cloudformation describe-stacks --stack-name neuron-compile-test \
-        --query 'Stacks[0].Outputs[?OutputKey==`PublicIP`].OutputValue' --output text --region <region>)
-      ssh -i <key>.pem ubuntu@$IP "source /opt/aws_neuronx_venv_pytorch_2_5_nxd_training/bin/activate && \
-        pip install -q 'transformers>=5.0' && cd ~/neuron-test && \
-        MODEL_ID='<model-id>' python test_neuron_compile.py"
-      ```
-
-   e. **Expected output** - Look for the copyable summary block at the end:
-      ```
-      ############################################################
-      # COPY THIS SUMMARY:
-      ############################################################
-      Model: <model-id>
-      Status: PASSED
-      Architecture: <model_type>
-      Parameters: <X.XX>B
-      Memory Warning: YES (if present, needs larger instance)
-      ############################################################
-      ```
-      Full log saved to: `~/neuron-test/last_test.log`
-
-   f. **Ask user to confirm result** using `AskUserQuestion`:
-      - **Compilation PASSED** - I see "Compiler status PASS" in the output
-      - **PASSED with memory warnings** - Passed but saw "Failed to allocate" errors
-      - **Compilation FAILED** - I see errors or "Compiler status FAIL"
-      - **Need help interpreting** - Not sure what the output means
-
-      → If **PASSED** (no warnings): Proceed with Trainium, go to cleanup
-      → If **PASSED with memory warnings**: Model is compatible but needs larger instance:
-        - trn1.2xlarge (32GB) too small → recommend trn1.32xlarge (512GB)
-        - Note: Training needs 3-4x more memory than inference (gradients, optimizer)
-        - Proceed with Trainium but select larger instance in Step 10
-      → If **FAILED**: Check error type:
-        - `int64 matmul not supported` → Use GPU instead (incompatible)
-        - `model_type not recognized` → Check transformers version
-        - Other errors → See [references/neuron-compile-test.md](references/neuron-compile-test.md)
-      → If **Need help**: Ask user to paste output, help interpret
-
-   g. **Cleanup**:
-      ```bash
-      aws cloudformation delete-stack --stack-name neuron-compile-test --region <region>
-      ```
+**If architecture is NOT supported** - Inform user:
+> "This model architecture (`<model_type>`) is not supported on Trainium for training.
+> Only Llama, Qwen3, and Granite are currently supported. Using GPU instead."
 
 → If Trainium + QLoRA selected: Error - QLoRA not supported on Trainium
 → Wait for response.
@@ -370,7 +302,6 @@ Use `AskUserQuestion`:
 | [references/instance-sizing.md](references/instance-sizing.md) | Selecting instance types |
 | [references/container-selection.md](references/container-selection.md) | Choosing container images |
 | [references/neuron-validation.md](references/neuron-validation.md) | Verifying Trainium compatibility |
-| [references/neuron-compile-test.md](references/neuron-compile-test.md) | Testing Neuron compilation for unknown models |
 | [references/data-contract.md](references/data-contract.md) | Dataset format requirements |
 | [references/output-artifacts.md](references/output-artifacts.md) | Generating final artifacts |
 | [references/checklist.md](references/checklist.md) | Pre-delivery verification |
@@ -395,7 +326,6 @@ Use `AskUserQuestion`:
 | `templates/cpt_hf.py` | Continued pretraining | GPU |
 | `templates/trainium/lora_neuron.py` | LoRA for Neuron SDK | Trainium |
 | `templates/trainium/sft_neuron.py` | Full SFT for Neuron SDK | Trainium |
-| `templates/trainium/cfn-neuron-compile-test.yaml` | Neuron compilation test EC2 | Trainium |
 | `templates/launch_training_job.py` | SDK v3 ModelTrainer launcher | Both |
 | `templates/hyperpod/` | HyperPod recipes | Both |
 
