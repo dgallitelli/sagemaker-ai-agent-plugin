@@ -192,10 +192,15 @@ Use `AskUserQuestion`:
 
    f. **Ask user to confirm result** using `AskUserQuestion`:
       - **Compilation PASSED** - I see "Compiler status PASS" in the output
+      - **PASSED with memory warnings** - Passed but saw "Failed to allocate" errors
       - **Compilation FAILED** - I see errors or "Compiler status FAIL"
       - **Need help interpreting** - Not sure what the output means
 
-      → If **PASSED**: Proceed with Trainium, go to cleanup
+      → If **PASSED** (no warnings): Proceed with Trainium, go to cleanup
+      → If **PASSED with memory warnings**: Model is compatible but needs larger instance:
+        - trn1.2xlarge (32GB) too small → recommend trn1.32xlarge (512GB)
+        - Note: Training needs 3-4x more memory than inference (gradients, optimizer)
+        - Proceed with Trainium but select larger instance in Step 10
       → If **FAILED**: Check error type:
         - `int64 matmul not supported` → Use GPU instead (incompatible)
         - `model_type not recognized` → Check transformers version

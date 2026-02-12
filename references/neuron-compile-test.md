@@ -25,6 +25,37 @@ Test whether a HuggingFace model can compile on AWS Trainium/Neuron before commi
 | `tokenizers` error | Tokenizer format too new | Upgrade transformers in container |
 | Forward pass timeout | Model too large or compilation hanging | Try larger instance or simplify model |
 
+## Memory Warnings (PASSED but needs larger instance)
+
+If you see output like this but compilation still PASSES:
+```
+ERROR  TDRV:log_dev_mem    Failed to allocate 1.159GB ... on ND 0:NC 0
+ERROR  TDRV:tensor_allocate Failed to allocate ... bytes on DEVICE for tensor
+...
+Compiler status PASS
+RESULT: Neuron compilation test PASSED
+```
+
+**This means:**
+- Model architecture IS compatible with Neuron
+- But trn1.2xlarge (32GB HBM) is too small for this model
+- The forward pass worked but training will need more memory
+
+**Memory requirements for training:**
+| Operation | Memory Multiplier |
+|-----------|-------------------|
+| Inference (forward only) | 1x model size |
+| Training (full fine-tune) | 3-4x model size |
+| Training with optimizer states | 4-6x model size |
+
+**Solution:** Use trn1.32xlarge (512GB HBM) or trn1n.32xlarge for training.
+
+| Instance | HBM Memory | Recommended For |
+|----------|------------|-----------------|
+| trn1.2xlarge | 32GB | Models ≤3B params |
+| trn1.32xlarge | 512GB | Models 7-70B params |
+| trn1n.32xlarge | 512GB | Same + faster networking |
+
 ## Deployment Steps
 
 ### Step 1: SSH Key
