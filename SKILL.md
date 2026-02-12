@@ -131,17 +131,63 @@ Use `AskUserQuestion`:
    Prompt: "Is <model_type> supported for training on Trainium/Neuron?"
    ```
 
-2. **Only offer Trainium if architecture is explicitly listed** on the supported architectures page
+2. **Decision tree**:
+   - If architecture **explicitly listed** → Offer both GPU and Trainium
+   - If architecture **not listed** but user wants Trainium → Offer compilation test
+   - If architecture **not listed** and user doesn't need Trainium → Use GPU
 
-3. **Present appropriate options**:
-   - If Trainium supported → Offer both GPU and Trainium
-   - If Trainium NOT supported → Only offer GPU (explain why)
+3. **Present appropriate options** using `AskUserQuestion`:
 
-Use `AskUserQuestion` only if both options are valid:
-- **GPU (NVIDIA)** - Broad model support, QLoRA compatible
-- **Trainium** - Cost-effective for supported models (no 4-bit)
+   **If architecture is supported:**
+   - **GPU (NVIDIA)** - Broad model support, QLoRA compatible
+   - **Trainium** - Cost-effective for supported models (no 4-bit)
 
-→ If architecture not supported: Skip this question, use GPU automatically
+   **If architecture is NOT in supported list:**
+   - **GPU (NVIDIA)** - Guaranteed compatibility (Recommended)
+   - **Test Trainium compatibility** - Launch EC2 instance to verify (~$0.30)
+
+4. **If user chooses "Test Trainium compatibility"**:
+
+   Follow [references/neuron-compile-test.md](references/neuron-compile-test.md):
+
+   a. **Ask about SSH key** using `AskUserQuestion`:
+      - **Use existing key pair** - I have an EC2 key pair
+      - **Create new key pair** - Create one for me
+
+   b. **If creating new key**, run:
+      ```bash
+      aws ec2 create-key-pair --key-name neuron-compile-test-key \
+        --query 'KeyMaterial' --region <region> --output text > neuron-compile-test-key.pem
+      chmod 400 neuron-compile-test-key.pem
+      ```
+
+   c. **Deploy test instance** (requires user approval):
+      ```bash
+      aws cloudformation create-stack --stack-name neuron-compile-test \
+        --template-body file://templates/trainium/cfn-neuron-compile-test.yaml \
+        --parameters ParameterKey=KeyPairName,ParameterValue=<key-name> \
+        --region <region>
+      ```
+
+   d. **Run test (one-liner)**:
+      ```bash
+      IP=$(aws cloudformation describe-stacks --stack-name neuron-compile-test \
+        --query 'Stacks[0].Outputs[?OutputKey==`PublicIP`].OutputValue' --output text --region <region>)
+      ssh -i <key>.pem ubuntu@$IP "source /opt/aws_neuronx_venv_pytorch_2_5_nxd_training/bin/activate && \
+        pip install -q 'transformers>=5.0' && cd ~/neuron-test && \
+        MODEL_ID='<model-id>' python test_neuron_compile.py"
+      ```
+
+   e. **Interpret results**:
+      - `PASSED` → Proceed with Trainium
+      - `int64 matmul not supported` → Use GPU instead (incompatible)
+      - Other errors → Check [references/neuron-compile-test.md](references/neuron-compile-test.md)
+
+   f. **Cleanup**:
+      ```bash
+      aws cloudformation delete-stack --stack-name neuron-compile-test --region <region>
+      ```
+
 → If Trainium + QLoRA selected: Error - QLoRA not supported on Trainium
 → Wait for response.
 
@@ -298,6 +344,7 @@ Use `AskUserQuestion`:
 | [references/instance-sizing.md](references/instance-sizing.md) | Selecting instance types |
 | [references/container-selection.md](references/container-selection.md) | Choosing container images |
 | [references/neuron-validation.md](references/neuron-validation.md) | Verifying Trainium compatibility |
+| [references/neuron-compile-test.md](references/neuron-compile-test.md) | Testing Neuron compilation for unknown models |
 | [references/data-contract.md](references/data-contract.md) | Dataset format requirements |
 | [references/output-artifacts.md](references/output-artifacts.md) | Generating final artifacts |
 | [references/checklist.md](references/checklist.md) | Pre-delivery verification |
@@ -322,6 +369,7 @@ Use `AskUserQuestion`:
 | `templates/cpt_hf.py` | Continued pretraining | GPU |
 | `templates/trainium/lora_neuron.py` | LoRA for Neuron SDK | Trainium |
 | `templates/trainium/sft_neuron.py` | Full SFT for Neuron SDK | Trainium |
+| `templates/trainium/cfn-neuron-compile-test.yaml` | Neuron compilation test EC2 | Trainium |
 | `templates/launch_training_job.py` | SDK v3 ModelTrainer launcher | Both |
 | `templates/hyperpod/` | HyperPod recipes | Both |
 
