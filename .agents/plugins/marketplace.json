@@ -1,0 +1,20 @@
+{
+  "name": "dgallitelli-sagemaker-ai",
+  "interface": {
+    "displayName": "SageMaker AI Plugins"
+  },
+  "plugins": [
+    {
+      "name": "sagemaker-ai",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

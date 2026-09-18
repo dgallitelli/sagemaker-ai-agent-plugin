@@ -1,14 +1,14 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "sagemaker-ai",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Portable Agent Plugin for Amazon SageMaker AI development and operations.",
   "author": {
     "name": "Davide Gallitelli",
     "url": "https://github.com/dgallitelli"
   },
-  "homepage": "https://github.com/dgallitelli/sagemaker-llm-training-skill",
-  "repository": "https://github.com/dgallitelli/sagemaker-llm-training-skill",
+  "homepage": "https://github.com/dgallitelli/sagemaker-ai-agent-plugin",
+  "repository": "https://github.com/dgallitelli/sagemaker-ai-agent-plugin",
   "license": "MIT",
   "keywords": [
     "amazon-sagemaker",

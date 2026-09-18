@@ -1,8 +1,21 @@
 {
   "name": "sagemaker-ai",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "displayName": "SageMaker AI",
   "description": "Amazon SageMaker AI skill covering SDK v3, training, inference, HyperPod, monitoring, AutoGluon, and warm-pool iteration.",
   "author": {
-    "name": "Davide Gallitelli"
-  }
+    "name": "Davide Gallitelli",
+    "url": "https://github.com/dgallitelli"
+  },
+  "homepage": "https://github.com/dgallitelli/sagemaker-ai-agent-plugin",
+  "repository": "https://github.com/dgallitelli/sagemaker-ai-agent-plugin",
+  "license": "MIT",
+  "keywords": [
+    "amazon-sagemaker",
+    "aws",
+    "machine-learning",
+    "mlops"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
 }

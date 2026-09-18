@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "awslabs.sagemaker-ai": {
+      "command": "uvx",
+      "args": [
+        "awslabs.sagemaker-ai-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}

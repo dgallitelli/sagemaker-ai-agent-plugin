@@ -1,0 +1,27 @@
+{
+  "name": "dgallitelli-sagemaker-ai",
+  "description": "Amazon SageMaker AI plugin for training, inference, HyperPod, monitoring, and MLOps.",
+  "owner": {
+    "name": "Davide Gallitelli",
+    "url": "https://github.com/dgallitelli"
+  },
+  "plugins": [
+    {
+      "name": "sagemaker-ai",
+      "displayName": "SageMaker AI",
+      "source": "./",
+      "description": "Build, train, deploy, monitor, and operate Amazon SageMaker AI workloads.",
+      "homepage": "https://github.com/dgallitelli/sagemaker-ai-agent-plugin",
+      "repository": "https://github.com/dgallitelli/sagemaker-ai-agent-plugin",
+      "license": "MIT",
+      "category": "development",
+      "tags": [
+        "aws",
+        "sagemaker",
+        "machine-learning",
+        "mlops",
+        "hyperpod"
+      ]
+    }
+  ]
+}
