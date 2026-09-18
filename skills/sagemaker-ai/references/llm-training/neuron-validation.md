@@ -80,7 +80,7 @@ Use AWS Deep Learning Containers for Neuron:
 
 ```bash
 # Fetch latest Neuron container
-python scripts/fetch_dlc_images.py --framework neuron --region us-east-1
+python scripts/llm-training/fetch_dlc_images.py --framework neuron --region us-east-1
 ```
 
 Example URI pattern:

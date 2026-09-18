@@ -2,7 +2,7 @@
 """Inspect a requirements.txt and emit container/accelerator hints.
 
 Usage:
-  python scripts/inspect_requirements.py requirements.txt
+  python scripts/llm-training/inspect_requirements.py requirements.txt
 """
 import re
 import sys
@@ -13,7 +13,11 @@ TRN_MARKERS = {"torch-neuronx", "neuronx-distributed", "optimum-neuron", "neuron
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python scripts/inspect_requirements.py path/to/requirements.txt", file=sys.stderr)
+        print(
+            "Usage: python scripts/llm-training/inspect_requirements.py "
+            "path/to/requirements.txt",
+            file=sys.stderr,
+        )
         sys.exit(2)
 
     req_path = Path(sys.argv[1])

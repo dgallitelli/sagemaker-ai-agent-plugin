@@ -2,9 +2,9 @@
 """Validate common SFT/DPO/CPT jsonl dataset schemas (local file).
 
 Usage:
-  python scripts/validate_dataset.py dataset.jsonl --schema sft
-  python scripts/validate_dataset.py dataset.jsonl --schema dpo
-  python scripts/validate_dataset.py dataset.jsonl --schema cpt
+  python scripts/llm-training/validate_dataset.py dataset.jsonl --schema sft
+  python scripts/llm-training/validate_dataset.py dataset.jsonl --schema dpo
+  python scripts/llm-training/validate_dataset.py dataset.jsonl --schema cpt
 """
 import argparse, json
 from pathlib import Path

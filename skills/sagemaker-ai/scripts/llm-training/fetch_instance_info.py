@@ -2,7 +2,7 @@
 """Fetch current SageMaker ML instance availability and provide sizing recommendations.
 
 Usage:
-    python scripts/fetch_instance_info.py --model-size 8 --technique qlora --context-len 8192
+    python scripts/llm-training/fetch_instance_info.py --model-size 8 --technique qlora --context-len 8192
 
 Provides instance recommendations based on the decision tree in instance-sizing.md.
 """

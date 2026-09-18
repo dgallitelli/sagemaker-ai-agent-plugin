@@ -1,0 +1,122 @@
+# cluster-config-eks.yaml
+# Example HyperPod cluster configuration for EKS orchestration
+#
+# Usage:
+#   1. Update values marked with <REPLACE>
+#   2. Run: hyp validate
+#   3. Run: hyp create --region us-west-2
+
+apiVersion: hyperpod.sagemaker.aws/v1
+kind: ClusterConfig
+metadata:
+  name: hyperpod-eks-example
+  labels:
+    environment: development
+    team: ml-platform
+
+spec:
+  # AWS Region
+  region: us-west-2
+
+  # Orchestrator type
+  orchestrator: eks
+
+  # VPC Configuration
+  vpc:
+    # Replace with your VPC ID
+    vpcId: <REPLACE_VPC_ID>  # e.g., vpc-0abc123def456789
+
+    # Private subnets with adequate IP space (81 IPs per node for EKS)
+    # Recommended: /24 or larger per subnet
+    subnetIds:
+      - <REPLACE_SUBNET_1>  # e.g., subnet-0abc123def456789
+      - <REPLACE_SUBNET_2>  # e.g., subnet-1abc123def456789
+
+    # Security group allowing self-referencing traffic (required for EFA)
+    securityGroupIds:
+      - <REPLACE_SECURITY_GROUP>  # e.g., sg-0abc123def456789
+
+  # IAM Configuration
+  iam:
+    # Execution role for SageMaker to manage cluster
+    executionRole: arn:aws:iam::<ACCOUNT_ID>:role/HyperPodExecutionRole
+
+  # Instance Groups
+  instanceGroups:
+    # System nodes - run cluster management components
+    - name: system
+      instanceType: ml.m5.2xlarge
+      instanceCount: 2
+      lifecycleConfig:
+        sourceS3Uri: s3://<REPLACE_BUCKET>/hyperpod/
+        onCreate: on_create.sh
+      ebsVolumeConfig:
+        volumeSizeInGB: 500
+        volumeType: gp3
+        iops: 3000
+        throughput: 125
+
+    # GPU workers - run training workloads
+    - name: gpu-workers
+      instanceType: ml.p5.48xlarge
+      instanceCount: 4
+      lifecycleConfig:
+        sourceS3Uri: s3://<REPLACE_BUCKET>/hyperpod/
+        onCreate: on_create.sh
+      ebsVolumeConfig:
+        volumeSizeInGB: 1000
+        volumeType: gp3
+        iops: 6000
+        throughput: 500
+      # Placement group for optimal network performance
+      placementGroup:
+        strategy: cluster
+      # Custom tags for the instances
+      tags:
+        - key: Purpose
+          value: ml-training
+        - key: InstanceGroup
+          value: gpu-workers
+
+  # EKS-specific configuration
+  eks:
+    # Kubernetes version
+    clusterVersion: "1.29"
+
+    # EKS addons to install
+    addons:
+      - name: vpc-cni
+        version: latest
+      - name: coredns
+        version: latest
+      - name: kube-proxy
+        version: latest
+
+    # Node labels applied to GPU workers
+    nodeLabels:
+      node-type: gpu
+      accelerator: nvidia-h100
+
+    # Node taints (optional)
+    # nodeTaints:
+    #   - key: nvidia.com/gpu
+    #     value: "true"
+    #     effect: NoSchedule
+
+  # Resilience settings
+  resilience:
+    # Enable automatic node replacement
+    autoNodeReplacement: true
+    # Health check interval in seconds
+    healthCheckIntervalSeconds: 300
+    # Number of failed health checks before replacement
+    unhealthyNodeReplacementThreshold: 3
+
+  # Tags for the cluster
+  tags:
+    - key: Project
+      value: ml-training
+    - key: Environment
+      value: development
+    - key: Owner
+      value: ml-team

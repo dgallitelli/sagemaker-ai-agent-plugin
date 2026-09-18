@@ -1,0 +1,8 @@
+{
+  "name": "sagemaker-ai",
+  "version": "1.0.0",
+  "description": "Amazon SageMaker AI skill covering SDK v3, training, inference, HyperPod, monitoring, AutoGluon, and warm-pool iteration.",
+  "author": {
+    "name": "Davide Gallitelli"
+  }
+}

@@ -23,15 +23,15 @@ Prompt: "Find the latest PyTorch training GPU container image for SageMaker"
 
 Or use the helper script (may have stale fallbacks):
 ```bash
-python scripts/fetch_dlc_images.py --framework pytorch --region us-east-1
-python scripts/fetch_dlc_images.py --framework neuron --region us-east-1
+python scripts/llm-training/fetch_dlc_images.py --framework pytorch --region us-east-1
+python scripts/llm-training/fetch_dlc_images.py --framework neuron --region us-east-1
 ```
 
 ## Step 1: Determine Target Accelerator
 
 Inspect user's `requirements.txt`:
 ```bash
-python scripts/inspect_requirements.py path/to/requirements.txt
+python scripts/llm-training/inspect_requirements.py path/to/requirements.txt
 ```
 
 ### GPU Indicators

@@ -2,7 +2,7 @@
 """Fetch current SageMaker Deep Learning Container images.
 
 Usage:
-    python scripts/fetch_dlc_images.py [--framework pytorch] [--region us-east-1]
+    python scripts/llm-training/fetch_dlc_images.py [--framework pytorch] [--region us-east-1]
 
 IMPORTANT: For the most up-to-date container images, always reference:
     https://aws.github.io/deep-learning-containers/reference/available_images/

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "awslabs.sagemaker-ai": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "awslabs.sagemaker-ai-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}

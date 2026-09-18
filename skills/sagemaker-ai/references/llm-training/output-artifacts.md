@@ -22,7 +22,7 @@ training_project/
 ```
 
 ### Launch Script Template
-Use `templates/launch_training_job.py` as base, customize:
+Use `templates/llm-training/launch_training_job.py` as base, customize:
 - Model ID
 - Instance type and count
 - S3 paths (dataset, output)
@@ -31,11 +31,11 @@ Use `templates/launch_training_job.py` as base, customize:
 
 ### Training Entrypoint
 Based on technique, use appropriate template:
-- `templates/sft_trl.py` - Full SFT
-- `templates/lora_peft.py` - LoRA
-- `templates/qlora_peft.py` - QLoRA
-- `templates/dpo_trl.py` - DPO
-- `templates/cpt_hf.py` - Continued pretraining
+- `templates/llm-training/sft_trl.py` - Full SFT
+- `templates/llm-training/lora_peft.py` - LoRA
+- `templates/llm-training/qlora_peft.py` - QLoRA
+- `templates/llm-training/dpo_trl.py` - DPO
+- `templates/llm-training/cpt_hf.py` - Continued pretraining
 
 ### Run Instructions
 ```bash
@@ -113,8 +113,8 @@ hyperpod_training/
 ```
 
 ### Use Templates
-- `templates/hyperpod/recipe_config.yaml`
-- `templates/hyperpod/submit_slurm.sh`
+- `templates/llm-training/hyperpod/recipe_config.yaml`
+- `templates/llm-training/hyperpod/submit_slurm.sh`
 
 ### Run Instructions
 ```bash

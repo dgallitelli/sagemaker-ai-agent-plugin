@@ -100,7 +100,7 @@ Data is mounted at:
 
 Use to validate dataset before training:
 ```bash
-python scripts/validate_dataset.py s3://bucket/datasets/train/
+python scripts/llm-training/validate_dataset.py s3://bucket/datasets/train/
 ```
 
 Checks:

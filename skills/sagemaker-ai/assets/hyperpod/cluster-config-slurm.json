@@ -1,0 +1,81 @@
+{
+  "ClusterName": "hyperpod-slurm-example",
+  "InstanceGroups": [
+    {
+      "InstanceGroupName": "controller",
+      "InstanceType": "ml.m5.xlarge",
+      "InstanceCount": 1,
+      "LifeCycleConfig": {
+        "SourceS3Uri": "s3://REPLACE_BUCKET/hyperpod/",
+        "OnCreate": "on_create.sh"
+      },
+      "ExecutionRole": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/HyperPodExecutionRole",
+      "ThreadsPerCore": 1,
+      "InstanceStorageConfigs": [
+        {
+          "EbsVolumeConfig": {
+            "VolumeSizeInGB": 500
+          }
+        }
+      ]
+    },
+    {
+      "InstanceGroupName": "login",
+      "InstanceType": "ml.m5.xlarge",
+      "InstanceCount": 1,
+      "LifeCycleConfig": {
+        "SourceS3Uri": "s3://REPLACE_BUCKET/hyperpod/",
+        "OnCreate": "on_create.sh"
+      },
+      "ExecutionRole": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/HyperPodExecutionRole",
+      "ThreadsPerCore": 1,
+      "InstanceStorageConfigs": [
+        {
+          "EbsVolumeConfig": {
+            "VolumeSizeInGB": 200
+          }
+        }
+      ]
+    },
+    {
+      "InstanceGroupName": "gpu-workers",
+      "InstanceType": "ml.p5.48xlarge",
+      "InstanceCount": 4,
+      "LifeCycleConfig": {
+        "SourceS3Uri": "s3://REPLACE_BUCKET/hyperpod/",
+        "OnCreate": "on_create.sh"
+      },
+      "ExecutionRole": "arn:aws:iam::REPLACE_ACCOUNT_ID:role/HyperPodExecutionRole",
+      "ThreadsPerCore": 1,
+      "InstanceStorageConfigs": [
+        {
+          "EbsVolumeConfig": {
+            "VolumeSizeInGB": 1000
+          }
+        }
+      ]
+    }
+  ],
+  "VpcConfig": {
+    "SecurityGroupIds": [
+      "REPLACE_SECURITY_GROUP_ID"
+    ],
+    "Subnets": [
+      "REPLACE_SUBNET_ID"
+    ]
+  },
+  "Tags": [
+    {
+      "Key": "Project",
+      "Value": "ml-training"
+    },
+    {
+      "Key": "Environment",
+      "Value": "development"
+    },
+    {
+      "Key": "Owner",
+      "Value": "ml-team"
+    }
+  ]
+}

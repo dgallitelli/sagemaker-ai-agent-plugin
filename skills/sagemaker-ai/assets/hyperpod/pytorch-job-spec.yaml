@@ -1,0 +1,290 @@
+# pytorch-job-spec.yaml
+# Example PyTorchJob specification for HyperPod with EKS
+#
+# Prerequisites:
+#   - PyTorch Training Operator installed
+#   - NVIDIA Device Plugin installed
+#   - EFA Device Plugin installed (for multi-node)
+#
+# Usage:
+#   kubectl apply -f pytorch-job-spec.yaml
+
+apiVersion: kubeflow.org/v1
+kind: PyTorchJob
+metadata:
+  name: distributed-training-example
+  namespace: default
+  labels:
+    app: pytorch-training
+    project: ml-training
+spec:
+  # Number of retries on failure
+  backoffLimit: 3
+
+  pytorchReplicaSpecs:
+    # Master node (rank 0) - also acts as a worker
+    Master:
+      replicas: 1
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            app: pytorch-training
+            role: master
+        spec:
+          containers:
+          - name: pytorch
+            # AWS Deep Learning Container for PyTorch
+            image: 763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.1.0-gpu-py310-cu118-ubuntu20.04-sagemaker
+            imagePullPolicy: Always
+
+            # Training command
+            command:
+              - torchrun
+            args:
+              - --nproc_per_node=8
+              - --nnodes=4
+              - --node_rank=0
+              - --rdzv_backend=c10d
+              - --rdzv_endpoint=$(MASTER_ADDR):29500
+              - /workspace/train.py
+              - --batch-size=64
+              - --epochs=100
+              - --checkpoint-dir=/data/checkpoints
+
+            # Resource requests and limits
+            resources:
+              limits:
+                nvidia.com/gpu: 8              # Request all 8 GPUs
+                vpc.amazonaws.com/efa: 4       # Request EFA devices
+                memory: 1000Gi
+                cpu: "96"
+              requests:
+                nvidia.com/gpu: 8
+                vpc.amazonaws.com/efa: 4
+                memory: 500Gi
+                cpu: "48"
+
+            # Environment variables
+            env:
+              # NCCL configuration for optimal performance
+              - name: NCCL_DEBUG
+                value: "WARN"
+              - name: NCCL_SOCKET_IFNAME
+                value: "eth0"
+              - name: NCCL_IB_DISABLE
+                value: "1"
+              # EFA configuration
+              - name: FI_EFA_USE_DEVICE_RDMA
+                value: "1"
+              - name: FI_PROVIDER
+                value: "efa"
+              # Distributed training
+              - name: WORLD_SIZE
+                value: "32"
+              # Application settings
+              - name: HF_HOME
+                value: "/data/huggingface"
+              - name: TRANSFORMERS_CACHE
+                value: "/data/huggingface"
+
+            # Volume mounts
+            volumeMounts:
+              # Training code
+              - name: code
+                mountPath: /workspace
+              # Shared data storage (FSx or PVC)
+              - name: data
+                mountPath: /data
+              # Shared memory for DataLoader workers
+              - name: dshm
+                mountPath: /dev/shm
+
+            # Health checks
+            livenessProbe:
+              exec:
+                command:
+                  - nvidia-smi
+              initialDelaySeconds: 30
+              periodSeconds: 60
+
+          # Volumes
+          volumes:
+            - name: code
+              configMap:
+                name: training-code
+            - name: data
+              persistentVolumeClaim:
+                claimName: training-data-pvc
+            # Increased shared memory for PyTorch DataLoader
+            - name: dshm
+              emptyDir:
+                medium: Memory
+                sizeLimit: 100Gi
+
+          # Node selection
+          nodeSelector:
+            node.kubernetes.io/instance-type: ml.p5.48xlarge
+
+          # Tolerations for GPU nodes
+          tolerations:
+            - key: "nvidia.com/gpu"
+              operator: "Exists"
+              effect: "NoSchedule"
+
+          # Don't restart on node failure (handled by job controller)
+          restartPolicy: OnFailure
+
+    # Worker nodes (rank 1-3)
+    Worker:
+      replicas: 3
+      restartPolicy: OnFailure
+      template:
+        metadata:
+          labels:
+            app: pytorch-training
+            role: worker
+        spec:
+          containers:
+          - name: pytorch
+            image: 763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.1.0-gpu-py310-cu118-ubuntu20.04-sagemaker
+            imagePullPolicy: Always
+
+            command:
+              - torchrun
+            args:
+              - --nproc_per_node=8
+              - --nnodes=4
+              - --rdzv_backend=c10d
+              - --rdzv_endpoint=$(MASTER_ADDR):29500
+              - /workspace/train.py
+              - --batch-size=64
+              - --epochs=100
+              - --checkpoint-dir=/data/checkpoints
+
+            resources:
+              limits:
+                nvidia.com/gpu: 8
+                vpc.amazonaws.com/efa: 4
+                memory: 1000Gi
+                cpu: "96"
+              requests:
+                nvidia.com/gpu: 8
+                vpc.amazonaws.com/efa: 4
+                memory: 500Gi
+                cpu: "48"
+
+            env:
+              - name: NCCL_DEBUG
+                value: "WARN"
+              - name: NCCL_SOCKET_IFNAME
+                value: "eth0"
+              - name: NCCL_IB_DISABLE
+                value: "1"
+              - name: FI_EFA_USE_DEVICE_RDMA
+                value: "1"
+              - name: FI_PROVIDER
+                value: "efa"
+              - name: WORLD_SIZE
+                value: "32"
+              - name: HF_HOME
+                value: "/data/huggingface"
+
+            volumeMounts:
+              - name: code
+                mountPath: /workspace
+              - name: data
+                mountPath: /data
+              - name: dshm
+                mountPath: /dev/shm
+
+          volumes:
+            - name: code
+              configMap:
+                name: training-code
+            - name: data
+              persistentVolumeClaim:
+                claimName: training-data-pvc
+            - name: dshm
+              emptyDir:
+                medium: Memory
+                sizeLimit: 100Gi
+
+          nodeSelector:
+            node.kubernetes.io/instance-type: ml.p5.48xlarge
+
+          tolerations:
+            - key: "nvidia.com/gpu"
+              operator: "Exists"
+              effect: "NoSchedule"
+
+          restartPolicy: OnFailure
+
+---
+# PersistentVolumeClaim for training data (requires FSx CSI driver)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: training-data-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: fsx-lustre
+  resources:
+    requests:
+      storage: 1200Gi
+
+---
+# ConfigMap for training code (alternative: build into container image)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: training-code
+  namespace: default
+data:
+  train.py: |
+    #!/usr/bin/env python3
+    """Example distributed training script."""
+    import os
+    import argparse
+    import torch
+    import torch.distributed as dist
+    from torch.nn.parallel import DistributedDataParallel as DDP
+
+    def setup_distributed():
+        """Initialize distributed training."""
+        rank = int(os.environ.get("RANK", 0))
+        world_size = int(os.environ.get("WORLD_SIZE", 1))
+        local_rank = int(os.environ.get("LOCAL_RANK", 0))
+
+        dist.init_process_group(
+            backend="nccl",
+            init_method="env://",
+            world_size=world_size,
+            rank=rank
+        )
+        torch.cuda.set_device(local_rank)
+        return rank, world_size, local_rank
+
+    def main():
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--batch-size", type=int, default=64)
+        parser.add_argument("--epochs", type=int, default=100)
+        parser.add_argument("--checkpoint-dir", type=str, default="/data/checkpoints")
+        args = parser.parse_args()
+
+        rank, world_size, local_rank = setup_distributed()
+
+        if rank == 0:
+            print(f"Starting training with {world_size} processes")
+
+        # Your model and training loop here
+        # model = YourModel().cuda(local_rank)
+        # model = DDP(model, device_ids=[local_rank])
+        # ...
+
+        dist.destroy_process_group()
+
+    if __name__ == "__main__":
+        main()

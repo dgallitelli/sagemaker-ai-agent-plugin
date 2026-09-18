@@ -124,10 +124,10 @@ Is your model 32B+ parameters?
 Run the sizing script for automated recommendations:
 ```bash
 # For GPU instances
-python scripts/fetch_instance_info.py --model-size 8 --technique lora --context-len 8192
+python scripts/llm-training/fetch_instance_info.py --model-size 8 --technique lora --context-len 8192
 
 # For Trainium instances
-python scripts/fetch_instance_info.py --model-size 8 --technique lora --accelerator trainium
+python scripts/llm-training/fetch_instance_info.py --model-size 8 --technique lora --accelerator trainium
 ```
 
 ## Instance Availability
